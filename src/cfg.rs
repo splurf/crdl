@@ -1,10 +1,7 @@
 use {
-    super::err::*,
+    crate::{err::misc, Result},
     clap::Parser,
-    std::{
-        io::ErrorKind,
-        process::{Command, Stdio},
-    },
+    cmd_exists::*,
 };
 
 #[derive(Debug, Parser)]
@@ -31,38 +28,9 @@ impl Config {
     }
 }
 
-/** Determine if the provided program exists */
-fn test_cmd(program: &'static str, p: misc::Program) -> Result<()> {
-    let mut cmd = Command::new(program);
-
-    #[cfg(target_os = "linux")]
-    cmd.arg("-c");
-
-    cmd.arg(if cfg!(windows) {
-        p.to_string()
-    } else {
-        format!("command -v {}", program)
-    })
-    .stdout(Stdio::null())
-    .stderr(Stdio::null())
-    .status()
-    .map_err(|e| -> Error {
-        if let ErrorKind::NotFound = e.kind() {
-            e.into()
-        } else {
-            p.into()
-        }
-    })?
-    .success()
-    .then_some(())
-    .ok_or(p.into())
-}
-
 pub fn requirements() -> Result<()> {
-    const PROGRAM: &'static str = if cfg!(windows) { "where" } else { "sh" };
-
     for p in [misc::Program::YtDlP, misc::Program::FFmpeg] {
-        test_cmd(PROGRAM, p)?;
+        cmd_exists(p)?;
     }
     Ok(println!("Everything is installed."))
 }
