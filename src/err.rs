@@ -1,33 +1,45 @@
-use std::fmt::{Debug, Display};
-
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 pub mod misc {
-    pub enum Prerequisite {
+    #[derive(Clone, Copy)]
+    pub enum Program {
         YtDlP,
         FFmpeg,
     }
 
-    impl super::Display for Prerequisite {
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            f.write_str(match self {
+    impl AsRef<str> for Program {
+        fn as_ref(&self) -> &str {
+            match self {
                 Self::YtDlP => "yt-dlp",
-                Self::FFmpeg => "FFmpeg",
-            })
+                Self::FFmpeg => "ffmpeg",
+            }
         }
     }
 
+    impl AsRef<std::ffi::OsStr> for Program {
+        fn as_ref(&self) -> &std::ffi::OsStr {
+            std::ffi::OsStr::new(AsRef::<str>::as_ref(self))
+        }
+    }
+
+    impl std::fmt::Display for Program {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.write_str(self.as_ref())
+        }
+    }
+
+    #[derive(Clone)]
     pub enum Error {
-        Prerequisite(Prerequisite),
+        Prerequisite(Program),
         FailedDownload(String),
         Unexpected,
     }
 
-    impl super::Display for Error {
+    impl std::fmt::Display for Error {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             f.write_str(&match self {
-                Error::Prerequisite(p) => format!("Missing \"{}\"", p),
-                Error::FailedDownload(e) => e.clone(),
+                Error::Prerequisite(p) => format!("'{}' not found", p),
+                Error::FailedDownload(e) => e.to_string(),
                 Self::Unexpected => "An unexpected error has occurred".to_string(),
             })
         }
@@ -35,13 +47,13 @@ pub mod misc {
 }
 
 pub enum Error {
-    Io(std::io::Error),
+    IO(std::io::Error),
     Misc(misc::Error),
 }
 
 impl From<std::io::Error> for Error {
     fn from(value: std::io::Error) -> Self {
-        Self::Io(value)
+        Self::IO(value)
     }
 }
 
@@ -51,22 +63,22 @@ impl From<misc::Error> for Error {
     }
 }
 
-impl From<misc::Prerequisite> for Error {
-    fn from(value: misc::Prerequisite) -> Self {
+impl From<misc::Program> for Error {
+    fn from(value: misc::Program) -> Self {
         Self::Misc(misc::Error::Prerequisite(value))
     }
 }
 
-impl Debug for Error {
+impl std::fmt::Debug for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        Display::fmt(self, f)
+        std::fmt::Display::fmt(self, f)
     }
 }
 
-impl Display for Error {
+impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&match self {
-            Error::Io(e) => e.to_string(),
+            Error::IO(e) => e.to_string(),
             Error::Misc(e) => e.to_string(),
         })
     }
